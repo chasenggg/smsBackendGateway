@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\smsbackend4.props" />
+</Project>

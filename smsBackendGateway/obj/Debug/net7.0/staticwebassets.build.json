@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "ateaC1Js4FclAu72SQfimyLJHHlnubTIYy0oUrocMTw=",
+  "Source": "smsBackendGateway",
+  "BasePath": "_content/smsBackendGateway",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
