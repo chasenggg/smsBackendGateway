@@ -12,7 +12,7 @@ namespace smsBackendGateway.Models
 
         public int messageId { get; set; }
         public string? sender { get; set; }
-        public string? date { get; set; }
+        public string? dateAndTime { get; set; }
 
         public Sms(string phoneNumber, string message, int messageId, string sender, string dateTime)
         {
@@ -20,7 +20,7 @@ namespace smsBackendGateway.Models
             this.message = message; 
             this.messageId = messageId; 
             this.sender = sender; 
-            this.date = dateTime;
+            this.dateAndTime = dateTime;
         }
 
         public Sms(){}

@@ -44,10 +44,8 @@ namespace smsBackendGateway.Controllers
         private List<Sms> ParseSmsMessages(string response)
         {
             int ctr = 0;
-            int index;
             int messageId = -1;
-            string? date = null;
-            string? textmsg = null;
+            string? dateAndTime = null;
             string? message = null;
             string? sender = null;
 
@@ -61,37 +59,16 @@ namespace smsBackendGateway.Controllers
                 if (line.StartsWith("+CMGL"))
                 {
                     ctr = 0;
-                    string regexSender = @"D\"",\""\d+\""|D\"",\""\D+\""";
-                    string regexDate = @"\""\d+\/\d+\/\d+,\d+:\d+:\d+\+\d+\""";
 
-                    index = line.IndexOf(',');
+                    string[] index = line.Split(',');
 
-                    messageId = index;
+                    messageId = int.Parse(index[0].Substring(7).ToString());
 
-                    Regex rxSender = new Regex(regexSender);
-                    Regex rxDate = new Regex(regexDate);
+                    string status = index[1].Trim('\"');
 
-                    //sender = "+" + line.Substring(line.IndexOf('6'),12);
+                    sender = "+" + index[2].Trim('\"');
 
-                    sender = line.ToString();
-
-                    Match match = rxSender.Match(sender);
-
-                    if (match.Success)
-                    {
-                        sender = "+" + match.ToString();
-                    }
-
-                    //date = line.Substring(line.IndexOf(",,"), 23); //date and time
-
-                    date = line.ToString();
-
-                    Match matchDate = rxDate.Match(date);
-
-                    if (match.Success)
-                    {
-                        date = matchDate.ToString();
-                    }
+                    dateAndTime = (index[4] + ", " + index[5]).Trim('\"');
 
                     ctr++;
                 }
@@ -99,42 +76,10 @@ namespace smsBackendGateway.Controllers
                 {
                     if (ctr == 1)
                     {
-                        //textmsg = line.ToString();
                         message = line.ToString();
-                        messages.Add(new Sms("1", message, messageId, sender, date));
+                        messages.Add(new Sms("1", message, messageId, sender, dateAndTime));
                         ctr = 0;
                     }
-                }
-
-                try
-                {
-                    string connectionString = "Data Source=uphmc-dc33; Initial Catalog=ITWorksSMS; TrustServerCertificate=True; User ID=dalta; Password=dontshareit";
-
-                    SqlConnection connection = new SqlConnection(connectionString);
-                    // Open the connection
-                    connection.Open();
-
-                    SqlCommand command;
-                    SqlDataAdapter adapter = new SqlDataAdapter();
-
-                    command = connection.CreateCommand();
-
-                    //String sql = "INSERT INTO contacts (contact_fname, contact_no ) VALUES (3, '" +message.sender + "')";
-                    String sql = "";
-
-
-                    command = new SqlCommand(sql, connection);
-                    adapter.InsertCommand = new SqlCommand(sql, connection);
-                    adapter.InsertCommand.ExecuteNonQuery();
-
-
-                    // Close the connection
-                    connection.Close();
-                }
-                catch (SqlException ex)
-                {
-                    // Handle any errors that occurred during the connection process
-                    Console.WriteLine("An error occurred while connecting to the database: " + ex.Message);
                 }
             }
             return messages;
@@ -170,8 +115,42 @@ namespace smsBackendGateway.Controllers
             foreach (Sms message in messages)
             {
                 //Contruct our Rows
-                messageList.Add(new Sms("1", message.message, message.messageId, message.sender, message.date));
+                messageList.Add(new Sms("1", message.message, message.messageId, message.sender, message.dateAndTime));
+                
+                try
+                {
+                    string connectionString = "Data Source=uphmc-dc33; Initial Catalog=ITWorksSMS; TrustServerCertificate=True; User ID=dalta; Password=dontshareit";
+
+                    SqlConnection connection = new SqlConnection(connectionString);
+                    // Open the connection
+                    connection.Open();
+
+                    SqlCommand command;
+                    SqlDataAdapter adapter = new SqlDataAdapter();
+
+                    command = connection.CreateCommand();
+
+                    String sql = "INSERT INTO contacts (contact_fname, contact_no ) VALUES (3, '"+ message.message +"')";
+
+
+
+                    command = new SqlCommand(sql, connection);
+                    adapter.InsertCommand = new SqlCommand(sql, connection);
+                    adapter.InsertCommand.ExecuteNonQuery();
+
+
+                    // Close the connection
+                    connection.Close();
+                }
+                catch (SqlException ex)
+                {
+                    // Handle any errors that occurred during the connection process
+                    Console.WriteLine("An error occurred while connecting to the database: " + ex.Message);
+                }
             }
+            
+            //database
+            
 
             serialport.Close();
 
@@ -312,7 +291,7 @@ namespace smsBackendGateway.Controllers
 
                 command = connection.CreateCommand();
 
-                String sql = "INSERT INTO sms_queue (contact_id, sms_message) VALUES (3, '" + sms.message + "')";
+                String sql = "INSERT INTO sms_queue (contact_id, sms_message) VALUES (3, '" +sms.message+ "')";
 
 
                 command = new SqlCommand(sql, connection);
