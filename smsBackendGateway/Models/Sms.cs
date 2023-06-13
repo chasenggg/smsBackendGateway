@@ -6,6 +6,7 @@ namespace smsBackendGateway.Models
 {
     public class Sms
     {
+        //public int contact_id { get; set; }
         public string phoneNumber { get; set; }
         public string message { get; set; }
 
@@ -23,6 +24,11 @@ namespace smsBackendGateway.Models
         }
 
         public Sms(){}
+
+        public Sms(string phoneNumber)
+        {
+            this.phoneNumber = phoneNumber;
+        }
     }
 
   

@@ -4,6 +4,14 @@ using smsBackendGateway.Models;
 using System.IO.Ports;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading.Tasks;
+using NuGet.Protocol.Plugins;
+using Microsoft.DotNet.Scaffolding.Shared.Messaging;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace smsBackendGateway.Controllers
 {
@@ -16,18 +24,12 @@ namespace smsBackendGateway.Controllers
         private string[] ports = SerialPort.GetPortNames();
 
         private readonly ILogger<SmsController> _logger;
+        private readonly SmsContext _dbContext;
 
-        //database
-        //private readonly TodoAppDatabaseContext _dbcontext;
-        //public SmsController(TodoAppDatabaseContext context)
-        //{
-        //    _dbcontext = context;
-     
-        //}
-
-        public SmsController(ILogger<SmsController> logger)
+        public SmsController(ILogger<SmsController> logger, SmsContext DbContext)
         {
             _logger = logger;
+            _dbContext = DbContext;
             this.serialport.Parity = Parity.None;
             this.serialport.DataBits = 8;
             this.serialport.StopBits = StopBits.One;
@@ -35,6 +37,8 @@ namespace smsBackendGateway.Controllers
             this.serialport.DtrEnable = true;
             this.serialport.RtsEnable = true;
             this.serialport.NewLine = System.Environment.NewLine;
+
+            string connectionString = "Data Source=uphmc-dc33; Initial Catalog=ITWorksSMS; TrustServerCertificate=True; User ID=dalta; Password=dontshareit";
         }
 
         private List<Sms> ParseSmsMessages(string response)
@@ -101,11 +105,43 @@ namespace smsBackendGateway.Controllers
                         ctr = 0;
                     }
                 }
+
+                try
+                {
+                    string connectionString = "Data Source=uphmc-dc33; Initial Catalog=ITWorksSMS; TrustServerCertificate=True; User ID=dalta; Password=dontshareit";
+
+                    SqlConnection connection = new SqlConnection(connectionString);
+                    // Open the connection
+                    connection.Open();
+
+                    SqlCommand command;
+                    SqlDataAdapter adapter = new SqlDataAdapter();
+
+                    command = connection.CreateCommand();
+
+                    //String sql = "INSERT INTO contacts (contact_fname, contact_no ) VALUES (3, '" +message.sender + "')";
+                    String sql = "";
+
+
+                    command = new SqlCommand(sql, connection);
+                    adapter.InsertCommand = new SqlCommand(sql, connection);
+                    adapter.InsertCommand.ExecuteNonQuery();
+
+
+                    // Close the connection
+                    connection.Close();
+                }
+                catch (SqlException ex)
+                {
+                    // Handle any errors that occurred during the connection process
+                    Console.WriteLine("An error occurred while connecting to the database: " + ex.Message);
+                }
             }
             return messages;
         }
 
         [HttpGet]
+        [Route("ReceiveMessage")]
         public string GetAllMessages()
         {
             serialport.Open();
@@ -142,25 +178,99 @@ namespace smsBackendGateway.Controllers
             return JsonSerializer.Serialize(messageList);
         }
 
-        private List<Sms> ParseSmsContacts(string recipient)
+        [HttpGet]
+        [Route("Select")]
+        public string Test()
         {
-            int ctr = 0;
-            double number;
+            string connectionString = "Data Source=uphmc-dc33; Initial Catalog=ITWorksSMS; TrustServerCertificate=True; User ID=dalta; Password=dontshareit";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    // Open the connection
+                    connection.Open();
+
+                    using (SqlCommand cmd = new SqlCommand("SELECT * FROM contacts", connection))
+                    {
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                return reader.GetValue(2).ToString();
+                            }
+                        }
+                    }
+
+
+                    // Close the connection
+                    connection.Close();
+                }
+                catch (SqlException ex)
+                {
+                    // Handle any errors that occurred during the connection process
+                    Console.WriteLine("An error occurred while connecting to the database: " + ex.Message);
+                }
+            }
+            return "200";
+        }
+
+        [HttpGet]
+        [Route("Insert")]
+        public string Test2()
+        {
+            string connectionString = "Data Source=uphmc-dc33; Initial Catalog=ITWorksSMS; TrustServerCertificate=True; User ID=dalta; Password=dontshareit";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    // Open the connection
+                    connection.Open();
+
+                    SqlCommand command;
+                    SqlDataAdapter adapter = new SqlDataAdapter();
+
+                    String sql = ("INSERT INTO contacts (employee_no, contact_lname, contact_fname, contact_mname, contact_no) VALUES('777H', 'ABAD', 'JUNALD', 'ORO', '+639176321177')");
+
+                    command = new SqlCommand(sql, connection);
+                    adapter.InsertCommand = new SqlCommand(sql, connection);
+                    adapter.InsertCommand.ExecuteNonQuery();
+
+                    // Close the connection
+                    connection.Close();
+                }
+                catch (SqlException ex)
+                {
+                    // Handle any errors that occurred during the connection process
+                    Console.WriteLine("An error occurred while connecting to the database: " + ex.Message);
+                }
+            }
+            return "200";
+        }
+
+        private List<Sms> ParseSmsContacts(string response)
+        {
+            int messageId = -1;
+            string? date = null;
+            string? message = null;
+            string? sender = null;
 
             List<Sms> contacts = new List<Sms>();
 
-            for(int i = 0; i < ctr; i++)
+            string[] number = response.Split(';');
+
+            foreach (string phoneNumbers in number)
             {
-                Console.WriteLine("Number: ");
-                number = Convert.ToDouble(Console.ReadLine());
+                Console.WriteLine(sender = phoneNumbers.ToString());
 
             }
-           
+            contacts.Add(new Sms("1", message, messageId, sender, date));
             return contacts;
         }
 
-
         [HttpPost]
+        [Route("SendMessage")]
         public string Send([FromBody] Sms sms)
         {
             serialport.Open();
@@ -177,13 +287,50 @@ namespace smsBackendGateway.Controllers
             serialport.WriteLine(sms.message + "\x1A");
             Thread.Sleep(1000);
 
-            string recipient = serialport.ReadExisting();
+            string response = serialport.ReadExisting();
 
-            List<Sms> contacts = ParseSmsContacts(recipient);
+            List<Sms> contacts = ParseSmsContacts(response);
+
+            List<Sms> contactsList = new List<Sms>();
+            foreach (Sms contact in contacts)
+            {
+                contactsList.Add(new Sms(contact.phoneNumber));
+            }
 
             serialport.Close();
 
-            return "200";
+            try
+            {
+                string connectionString = "Data Source=uphmc-dc33; Initial Catalog=ITWorksSMS; TrustServerCertificate=True; User ID=dalta; Password=dontshareit";
+
+                SqlConnection connection = new SqlConnection(connectionString);
+                // Open the connection
+                connection.Open();
+
+                SqlCommand command;
+                SqlDataAdapter adapter = new SqlDataAdapter();
+
+                command = connection.CreateCommand();
+
+                String sql = "INSERT INTO sms_queue (contact_id, sms_message) VALUES (3, '" + sms.message + "')";
+
+
+                command = new SqlCommand(sql, connection);
+                adapter.InsertCommand = new SqlCommand(sql, connection);
+                adapter.InsertCommand.ExecuteNonQuery();
+
+                // Close the connection
+                connection.Close();
+            }
+            catch (SqlException ex)
+            {
+                // Handle any errors that occurred during the connection process
+                Console.WriteLine("An error occurred while connecting to the database: " + ex.Message);
+            }
+
+            return JsonSerializer.Serialize(contactsList);
+
         }
+
     }
 }

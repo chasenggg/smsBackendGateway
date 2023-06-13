@@ -1,7 +1,14 @@
 using System.IO.Ports;
-using Microsoft.EntityFrameworkCore.SqlServer;
+using System.Data.SqlClient;
+using Azure;
+using smsBackendGateway.Models;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+//Database Connection 
+builder.Services.AddDbContext<SmsContext>(options =>
+options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -9,9 +16,6 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-// Database Connection 
-//builder.Services.AddDbContext<DatabaseContext>( opt => opt.UserSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
